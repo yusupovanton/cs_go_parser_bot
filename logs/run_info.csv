@@ -1,0 +1,6 @@
+ERROR:root:Error in cs_go script. [Errno 2] No such file or directory: 'html files/csgo.html'
+INFO:root:Parsed html!
+INFO:root:Created card list. Number of cards is 50
+INFO:root:Wrote to db!
+INFO:root:Processing skin AWP | Phobos
+ERROR:root:Error in cs_go script. cannot open resource

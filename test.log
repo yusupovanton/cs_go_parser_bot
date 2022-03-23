@@ -1,0 +1,6 @@
+2022-03-23 21:53:21,183 Error in cs_go script. [Errno 2] No such file or directory: 'html files/csgo.html'
+2022-03-23 21:53:55,681 Parsed html!
+2022-03-23 21:53:55,697 Created card list. Number of cards is 50
+2022-03-23 21:54:13,705 Wrote to db!
+2022-03-23 21:54:13,705 Processing skin AWP | Phobos
+2022-03-23 21:54:20,048 Error in cs_go script. cannot open resource
