@@ -22,7 +22,7 @@ class Parser:
         with open(file_name, 'r') as file:
             html = file.read()
             soup = BeautifulSoup(html, 'html.parser')
-        breakpoint()
+
         self.results = list(soup.findAll('div', {'class': re.compile(r'item market_item_\d+')}))
 
         if self.results:
