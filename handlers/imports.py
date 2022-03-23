@@ -7,3 +7,6 @@ from bs4 import BeautifulSoup
 from io import BytesIO
 import pandas as pd
 import os
+import time
+
+

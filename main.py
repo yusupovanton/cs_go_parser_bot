@@ -1,5 +1,3 @@
-import time
-
 
 from handlers.dispatcher import *
 
@@ -20,10 +18,13 @@ class Parser:
         return file_name
 
     def parse_html(self, file_name):
+
         with open(file_name, 'r') as file:
             html = file.read()
             soup = BeautifulSoup(html, 'html.parser')
+        breakpoint()
         self.results = list(soup.findAll('div', {'class': re.compile(r'item market_item_\d+')}))
+
         if self.results:
             print('Skins found!')
         else:
@@ -129,12 +130,13 @@ def db_to_df():
     return df
 
 
-def cs_go_main_function(sleep_time=300, to_create_cards=True):
+def cs_go_main_function(sleep_time=300, to_create_cards=False):
     """Parses the lis-skins website and adds it to the DB"""
     while True:
 
         try:
             filename = Parser().get_html()
+            print(filename)
             cards = Parser().parse_html(file_name=filename)
             logger.info(f'Parsed html!')
 
@@ -148,7 +150,7 @@ def cs_go_main_function(sleep_time=300, to_create_cards=True):
                 create_cards(cards_list=card_list)
 
             logger.info(f'Done! Size of DB: {len(r.keys())} Going to sleep now... zzz...')
-            print(f"Finish! Size of DB: {len(r.keys())}")
+            print(f"Finished! Size of DB: {len(r.keys())}")
 
         except Exception as ex:
             logger.error(f'Error in cs_go script. {ex}')

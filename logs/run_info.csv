@@ -4,3 +4,24 @@ INFO:root:Created card list. Number of cards is 50
 INFO:root:Wrote to db!
 INFO:root:Processing skin AWP | Phobos
 ERROR:root:Error in cs_go script. cannot open resource
+INFO:root:Parsed html!
+INFO:root:Created card list. Number of cards is 50
+INFO:root:Wrote to db!
+INFO:root:Processing skin AWP | Phobos
+ERROR:root:Error in cs_go script. cannot open resource
+INFO:root:Parsed html!
+INFO:root:Created card list. Number of cards is 50
+INFO:root:Wrote to db!
+INFO:root:Processing skin AWP | Phobos
+ERROR:root:Error in cs_go script. cannot open resource
+INFO:root:Parsed html!
+INFO:root:Created card list. Number of cards is 50
+INFO:root:Parsed html!
+INFO:root:Created card list. Number of cards is 50
+INFO:root:Wrote to db!
+INFO:root:Processing skin Five-SeveN | Kami
+ERROR:root:Error in cs_go script. cannot open resource
+INFO:root:Parsed html!
+INFO:root:Created card list. Number of cards is 50
+INFO:root:Wrote to db!
+INFO:root:Done! Size of DB: 494 Going to sleep now... zzz...
