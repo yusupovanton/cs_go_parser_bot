@@ -4,9 +4,9 @@ from handlers.dispatcher import *
 
 class Parser:
 
-    def __init__(self):
-        self.max_price = 2000
-        self.url = f'https://lis-skins.ru/market/csgo/?sortby=date_desc&price_to={self.max_price}&exterior=2%2C4'
+    def __init__(self, max_price):
+        self.max_price = max_price
+        self.url = f'https://lis-skins.ru/market/csgo/?sortby=date_desc&price_to={self.max_price}&exterior=2%2C4%2C3'
         self.results = []
 
     def get_html(self):
@@ -135,9 +135,9 @@ def cs_go_main_function(sleep_time=300, to_create_cards=False):
     while True:
 
         try:
-            filename = Parser().get_html()
+            filename = Parser(max_price=PRICE_LIMIT).get_html()
             print(filename)
-            cards = Parser().parse_html(file_name=filename)
+            cards = Parser(max_price=PRICE_LIMIT).parse_html(file_name=filename)
             logger.info(f'Parsed html!')
 
             card_list = create_card_list(soup=cards)
