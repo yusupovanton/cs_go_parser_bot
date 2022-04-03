@@ -1,114 +1,207 @@
+import pandas as pd
 
 from handlers.dispatcher import *
 
 
 class Parser:
+    """Parses links and writes them to DB"""
+    def __init__(self):
+        with open("registers/links_available.txt", "r") as register:
+            self.url_list = register.readlines()
 
-    def __init__(self, max_price):
-        self.max_price = max_price
-        self.url = f'https://lis-skins.ru/market/csgo/?sortby=date_desc&price_to={self.max_price}&exterior=2%2C4%2C3'
         self.results = []
+        self.matches = []
+        self.card_dictionary = {}
+        self.card_list = []
+        self.extract = ""
 
-    def get_html(self):
-        html = requests.get(self.url).text
-        file_name = 'html files/csgo.html'
-        with open(file_name, 'w+') as file:
-            soup = BeautifulSoup(html, 'html.parser')
-            file.write(soup.prettify())
-        return file_name
+    def parse_links(self):
 
-    def parse_html(self, file_name):
+        n_url = len(self.url_list)
 
-        with open(file_name, 'r') as file:
-            html = file.read()
-            soup = BeautifulSoup(html, 'html.parser')
+        status_i = 0
+        pipe = r.pipeline()
 
-        self.results = list(soup.findAll('div', {'class': re.compile(r'item market_item_\d+')}))
+        for url in self.url_list:
+            print(str(url).strip())
+            status_i += 1
 
-        if self.results:
-            print('Skins found!')
-        else:
-            print('Error in getting the contents of website.')
-        return self.results
+            print(f"Status: {status_i}/{n_url} links processed")
 
 
-def create_card_list(soup):
-    card_dictionary = {}
-    card_list = []
+            extract_try = 0
 
-    for item in soup:
-        item = str(item)
+            while not self.extract:
+                html = requests.get(url.strip()).text
+                extract_try += 1
 
-        id_ = item.split('data-marketskinid="')[1].split('">')[0].strip()
-        name = item.split('<div class="name-inner">')[1].split('</div>')[0].strip()
-        exterior = item.split('<div class="name-exterior">')[1].split('</div>')[0].strip()
-        price = item.split('<div class="price">')[1].split('<')[0].strip()
-        img = item.split('class="image" src="')[1].split('" title=')[0].strip()
-        link = item.split('<a class="name" href="')[1].split('">')[0].strip()
-        flt = re.search(r'\s+0\.\d+', item).group(0)
+                try:
 
-        try:
-            stickers = item.split('<div class="sticker-list">')[1].split('</div>')[0].strip()
-        except IndexError as ex:
-            stickers = None
+                    if extract_try > 1:
+                        print(f"It is my {extract_try} try to get the name of the skin.")
+                    elif extract_try > 5:
+                        break
 
-        card_dictionary = {
-            'id': id_,
-            'name': name,
-            'exterior': exterior,
-            'price': price,
-            'img': img,
-            'link': link,
-            'float': flt.strip(),
-            'stickers': stickers}
+                    self.extract = html.split('title="')[1].split('">')[0]
+                    print(f"{self.extract}")
 
-        card_list.append(card_dictionary)
+                except IndexError as ex:
+                    self.extract = ""
 
-    return card_list
+                    print(f"Error in extracting the name and exterior of the skin.\n")
+
+            if " | " not in self.extract:
+                print(f"ERROR IN GETTING THE NAME OF THE SKIN. RETRIEVED NAME: {self.extract}")
+                skin_name = ""
+                skin_exterior = ""
+            else:
+                skin_name = self.extract.split('(')[0]
+
+                skin_exterior = self.extract.split('(')[1].replace(")", "")
+
+            self.extract = ""
+
+            skins_matches = BeautifulSoup(html, 'html.parser').findAll("div",
+                                                                       {"class": re.compile(
+                                                                           r'item row market_item_\d+')})
+
+            for skin in skins_matches:
+                item = str(skin)
+
+                id_ = item.split('data-marketskinid="')[1].split('">')[0].strip()
+                name = skin_name
+                exterior = skin_exterior
+                price = item.split('<div class="price">')[1].split('<')[0].strip()
+                img = f'https://lis-skins.ru/market.php?act=request-screenshot&id={id_}'
+                link = url
+                flt = re.search(r'\s+0\.\d+', item).group(0)
+
+                try:
+                    stickers = item.split('<div class="sticker-list">')[1].split('</div>')[0].strip()
+                except IndexError as ex:
+                    stickers = None
+
+                card_dictionary = {
+                    'id': id_.strip(),
+                    'name': name.strip(),
+                    'exterior': exterior.strip(),
+                    'price': price.strip(),
+                    'link': link.strip(),
+                    'float': flt.strip(),
+                    'img': img.strip(),
+                    'stickers': str(stickers).strip()}
+
+                self.card_list.append(card_dictionary)
+
+                for key, value in card_dictionary.items():
+                    pipe.hset(str(id_), key=str(key), value=str(value))
+
+            if status_i % 100 == 0:
+                print(f"100 links processed. Executing pipe...")
+                pipe.execute()
+                pipe = r.pipeline()
+                print(f"Pipe executed! New size of the db is {r.dbsize()}")
 
 
-def create_cards(cards_list):
-    print(f"Going to process values and create cards... Please wait...")
-    for card in cards_list:
+def get_all_hashes_from_redis() -> (list, int):
 
-        url = card['img']
+    """GETS ALL HASHES FROM MY REDIS DB"""
+    try:
+        pipe = r.pipeline()
 
-        logger.info(f'Processing skin {card["name"]}')
-        response = requests.get(url)
-        with Image.open(BytesIO(response.content)) as img:
-            im = Image.new('RGB', (450, 250), (249, 248, 208))
-            draw = ImageDraw.Draw(im)
-            im.paste(img, (50, 50), mask=img)
+        for key in r.keys():
+            pipe.hgetall(key)
 
-        if card['stickers']:
-            urls = re.findall(r'https\S+(?=")', card['stickers'])
+        list_of_rows = pipe.execute()
+        status = 200
 
-            i = 0
+    except:
+        status = 400
+        list_of_rows = []
+        print(f"Error in getting the values from the DB")
 
-            for url in urls:
-                response = requests.get(url)
-                with Image.open(BytesIO(response.content)) as icon:
-                    icon = icon.resize((55, 55), Image.ANTIALIAS)
-                    im.paste(icon, (200 + 60 * i, 15), mask=icon)
-                    i += 1
-                    time.sleep(2)
-
-        font = ImageFont.truetype('fonts/Anonymous-Pro/Anonymous_Pro.ttf', size=18)
-        font_color = (37, 36, 19)
-        draw.text((10, 5), card['name'], font=font, fill=font_color)
-        draw.text((10, 20), f"EXT: {card['exterior']}", font=font, fill=font_color)
-        draw.text((10, 35), f"Price: {card['price']}", font=font, fill=font_color)
-        draw.text((10, 50), f"Float: {card['float']}", font=font, fill=font_color)
-        os.makedirs(f"csgocards/{card['name'].split('|')[0].strip()}", exist_ok=True)
-        im.save(fp=f"csgocards/{card['name'].split('|')[0].strip()}/{card['id']}.jpg", format='JPEG',
-                quality=100, subsampling=0)
+    return list_of_rows, status
 
 
-def write_to_db(list_of_dictionaries):
-    for dictionary in list_of_dictionaries:
-        id = dictionary['id']
-        for key, value in dictionary.items():
-            r.hset(str(id), key=str(key), value=str(value))
+def all_available_links_to_file() -> int:
+
+    """GETS ALL OF MY AVAILABLE LINKS TO A TXT FILE"""
+    try:
+        row_list = get_all_hashes_from_redis()[0]
+        df = pd.DataFrame(row_list)
+
+        with open(f"registers/links_available.txt", "w+") as register:
+            for unique_link in df.link.unique():
+
+                register.write(f"{unique_link}\n")
+
+        status = 200
+
+    except Exception as ex:
+        status = 400
+        print(f"Error in printing links from the DB: {ex}")
+
+    return status
+
+
+async def item_checker() -> int:
+    """DELETES ALL KEYS THAT CONTAIN OLD ITEMS FROM A DB"""
+
+    keys_to_delete = []
+    list_of_rows_to_check = get_all_hashes_from_redis()[0]
+
+    print(f"Length of rows that I am going to check is {len(list_of_rows_to_check)}")
+
+    df = pd.DataFrame(list_of_rows_to_check)
+    num_unique = len(df.name.unique())
+
+    i = 0
+    print(f"Going to process keys... Amount of unique names: {num_unique}")
+    for unique_name in df.name.unique():
+        i += 1
+        print(f"Status: {i}/{num_unique}")
+        partial_df = df.loc[df['name'] == unique_name]
+        all_ids = partial_df['id']
+        url = partial_df.iloc[0]['link']
+        actual_ids = set()
+        res_list = []
+        n_try = 0
+
+        while not res_list and not actual_ids:
+
+            n_try += 1
+
+            if n_try > 1:
+                print(f"It is my {n_try} try to get the website.")
+
+            try:
+
+                req = requests.get(url).text
+                results = BeautifulSoup(req, "html.parser").findAll("div", {"class": re.compile(r'item row market_item_\d+')})
+                actual_ids = set(re.findall(r'\d{8}(?=")', str(results)))
+                res_list = [id_ for id_ in all_ids if id_ not in actual_ids]
+
+                print(f"name: {unique_name}; keys total: {len(all_ids)}; keys outdated: {len(res_list)}")
+                keys_to_delete.append(res_list)
+
+            except Exception as ex:
+                print(f"Error in getting the actual ids for the {unique_name}: {ex}")
+
+    keys_to_delete = list(chain.from_iterable(keys_to_delete))
+    print(f"Total number of outdated keys: {len(keys_to_delete)}")
+
+    if keys_to_delete:
+        pipe = r.pipeline()
+
+        for key in keys_to_delete:
+            pipe.delete(key)
+
+        pipe.execute()
+
+    else:
+        print("Nothing to delete!")
+
+    return len(keys_to_delete)
 
 
 def db_to_df():
@@ -130,36 +223,6 @@ def db_to_df():
     return df
 
 
-def cs_go_main_function(sleep_time=300, to_create_cards=False):
-    """Parses the lis-skins website and adds it to the DB"""
-    while True:
-
-        try:
-            filename = Parser(max_price=PRICE_LIMIT).get_html()
-            print(filename)
-            cards = Parser(max_price=PRICE_LIMIT).parse_html(file_name=filename)
-            logger.info(f'Parsed html!')
-
-            card_list = create_card_list(soup=cards)
-            logger.info(f'Created card list. Number of cards is {len(card_list)}')
-
-            write_to_db(list_of_dictionaries=card_list)
-            logger.info(f'Wrote to db!')
-
-            if to_create_cards:
-                create_cards(cards_list=card_list)
-
-            logger.info(f'Done! Size of DB: {len(r.keys())} Going to sleep now... zzz...')
-            print(f"Finished! Size of DB: {len(r.keys())}")
-
-        except Exception as ex:
-            logger.error(f'Error in cs_go script. {ex}')
-            print(f'Error in cs_go script. {ex}')
-
-        finally:
-            time.sleep(sleep_time)
-
-
 if __name__ == '__main__':
-    cs_go_main_function()
-
+    '''NOW A TEST ENVIRONMENT'''
+    Parser().parse_links()
