@@ -28,7 +28,6 @@ class Parser:
 
             print(f"Status: {status_i}/{n_url} links processed")
 
-
             extract_try = 0
 
             while not self.extract:
@@ -89,6 +88,7 @@ class Parser:
                     'link': link.strip(),
                     'float': flt.strip(),
                     'img': img.strip(),
+                    'viewFlag': True,
                     'stickers': str(stickers).strip()}
 
                 self.card_list.append(card_dictionary)
@@ -145,9 +145,9 @@ def all_available_links_to_file() -> int:
 
 
 async def item_checker() -> int:
-    """DELETES ALL KEYS THAT CONTAIN OLD ITEMS FROM A DB"""
+    """HIDES ALL KEYS THAT CONTAIN OLD ITEMS FROM A DB"""
 
-    keys_to_delete = []
+    keys_to_hide = []
     list_of_rows_to_check = get_all_hashes_from_redis()[0]
 
     print(f"Length of rows that I am going to check is {len(list_of_rows_to_check)}")
@@ -182,26 +182,26 @@ async def item_checker() -> int:
                 res_list = [id_ for id_ in all_ids if id_ not in actual_ids]
 
                 print(f"name: {unique_name}; keys total: {len(all_ids)}; keys outdated: {len(res_list)}")
-                keys_to_delete.append(res_list)
+                keys_to_hide.append(res_list)
 
             except Exception as ex:
                 print(f"Error in getting the actual ids for the {unique_name}: {ex}")
 
-    keys_to_delete = list(chain.from_iterable(keys_to_delete))
-    print(f"Total number of outdated keys: {len(keys_to_delete)}")
+    keys_to_hide = list(chain.from_iterable(keys_to_hide))
+    print(f"Total number of outdated keys: {len(keys_to_hide)}")
 
-    if keys_to_delete:
+    if keys_to_hide:
         pipe = r.pipeline()
 
-        for key in keys_to_delete:
-            pipe.delete(key)
+        for key in keys_to_hide:
+            pipe.hset(key, "viewFlag", "False")
 
         pipe.execute()
 
     else:
         print("Nothing to delete!")
 
-    return len(keys_to_delete)
+    return len(keys_to_hide)
 
 
 def db_to_df():
@@ -222,7 +222,13 @@ def db_to_df():
     df['id'] = df['id'].astype(int)
     return df
 
+def num_of_actual_keys():
+
+    pipe = r.pipeline()
+
+
 
 if __name__ == '__main__':
     '''NOW A TEST ENVIRONMENT'''
-    Parser().parse_links()
+    # Parser().parse_links()
+    item_checker()
