@@ -7,7 +7,6 @@ from handlers import *
 
 loop = asyncio.get_event_loop()
 
-
 async def find_new_links():
 
     print(f"Going to find new links for the db...")

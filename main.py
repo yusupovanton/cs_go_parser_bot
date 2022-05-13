@@ -55,6 +55,9 @@ class Parser:
                 skin_exterior = ""
             else:
                 skin_name = self.extract.split('(')[0]
+                if 'Dragon King' in skin_name:
+                    print("catch!")
+                    self.extract = self.extract.split('|')[1]
 
                 skin_exterior = self.extract.split('(')[1].replace(")", "")
 
@@ -66,14 +69,13 @@ class Parser:
 
             for skin in skins_matches:
                 item = str(skin)
-
                 id_ = item.split('data-marketskinid="')[1].split('">')[0].strip()
                 name = skin_name
                 exterior = skin_exterior
                 price = item.split('<div class="price">')[1].split('<')[0].strip()
                 img = f'https://lis-skins.ru/market.php?act=request-screenshot&id={id_}'
                 link = url
-                flt = re.search(r'\s+0\.\d+', item).group(0)
+                flt = item.split('<div class="float">')[1].split('</div>')[0].strip()
 
                 try:
                     stickers = item.split('<div class="sticker-list">')[1].split('</div>')[0].strip()
@@ -230,5 +232,5 @@ def num_of_actual_keys():
 
 if __name__ == '__main__':
     '''NOW A TEST ENVIRONMENT'''
-    # Parser().parse_links()
+    Parser().parse_links()
     item_checker()
