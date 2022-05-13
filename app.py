@@ -22,7 +22,7 @@ async def check_db_for_old_items():
 if __name__ == '__main__':
 
     schedule.every(30).minutes.do(check_db_for_old_items)
-    schedule.every().day.at("4:20").do(find_new_links)
+    schedule.every(2).hours.do(find_new_links)
 
     while True:
         loop.run_until_complete(schedule.run_pending())
